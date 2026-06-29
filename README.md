@@ -66,6 +66,14 @@ npm run build
 GET  /health
 GET  /api/meta
 
+GET  /api/source/latest
+GET  /api/source/latest/character
+GET  /api/source/latest/weapon
+GET  /api/source/latest/equipment
+GET  /api/source/latest/bangboo
+GET  /api/source/latest/monster
+GET  /api/source/latest/item
+
 GET  /api/agents
 GET  /api/agents?attribute=Fire
 GET  /api/agents?specialty=Rupture
@@ -158,6 +166,20 @@ This project does not use HoYoLAB credentials or private account data.
 Agent data is seeded through Version 3.0 as of 2026-06-29. `/api/agents` returns released agents by default. Use `includeUpcoming=true` or `/api/agents/upcoming` to include announced Version 3.0 upcoming agents.
 
 W-Engines, drive discs, and materials are implemented as catalog records. Some long effect text can be refined later without changing stable IDs.
+
+## Latest Upstream Data
+
+The API can also inspect the latest public data version from `zzz.nanoka.cc`.
+
+```txt
+GET /api/source/latest
+GET /api/source/latest/character
+GET /api/source/latest/weapon
+GET /api/source/latest/equipment
+GET /api/source/latest/item
+```
+
+These endpoints return upstream data separately from the curated local catalog. Use them to compare versions or build an update pipeline.
 
 ## License
 

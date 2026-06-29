@@ -8,6 +8,7 @@ import { calculateAgentLevelCosts } from "./upgrade.js";
 import { createBuild, getBuild, listBuilds } from "./buildStore.js";
 import { localizeAgent, localizeDriveDisc, localizeMaterial, localizeWEngine, readLocale } from "./localization.js";
 import { type AssetKind, type AssetVariant, iconManifestItem, renderAssetSvg, withImages } from "./assets.js";
+import { getNanokaDataset, getNanokaSourceMeta, nanokaDatasetSchema } from "./nanokaSource.js";
 
 const app = Fastify({
   logger: true
@@ -37,6 +38,26 @@ app.get("/health", async () => ({
 }));
 
 app.get("/api/meta", async () => datasetMeta);
+
+app.get("/api/source/latest", async (request, reply) => {
+  try {
+    return await getNanokaSourceMeta();
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(502).send({ error: "Failed to fetch latest upstream source metadata" });
+  }
+});
+
+app.get("/api/source/latest/:dataset", async (request, reply) => {
+  const params = z.object({ dataset: nanokaDatasetSchema }).parse(request.params);
+
+  try {
+    return await getNanokaDataset(params.dataset);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(502).send({ error: `Failed to fetch latest upstream dataset: ${params.dataset}` });
+  }
+});
 
 app.get("/api/assets/:kind/:itemId/:variant", async (request, reply) => {
   const params = z
