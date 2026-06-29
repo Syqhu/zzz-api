@@ -67,7 +67,10 @@ GET  /health
 GET  /api/meta
 
 GET  /api/source/latest
+GET  /api/source/latest/summary
+GET  /api/source/latest/diff
 GET  /api/source/latest/character
+GET  /api/source/latest/character?preview=true&limit=5
 GET  /api/source/latest/weapon
 GET  /api/source/latest/equipment
 GET  /api/source/latest/bangboo
@@ -173,13 +176,16 @@ The API can also inspect the latest public data version from `zzz.nanoka.cc`.
 
 ```txt
 GET /api/source/latest
+GET /api/source/latest/summary
+GET /api/source/latest/diff
 GET /api/source/latest/character
+GET /api/source/latest/character?preview=true&limit=5
 GET /api/source/latest/weapon
 GET /api/source/latest/equipment
 GET /api/source/latest/item
 ```
 
-These endpoints return upstream data separately from the curated local catalog. Use them to compare versions or build an update pipeline.
+These endpoints return upstream data separately from the curated local catalog. Use `/summary` for record counts, `/diff` for local-vs-upstream count comparisons, and `preview=true` to inspect a small slice without downloading the full dataset.
 
 ## License
 

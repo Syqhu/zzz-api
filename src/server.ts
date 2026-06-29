@@ -8,7 +8,13 @@ import { calculateAgentLevelCosts } from "./upgrade.js";
 import { createBuild, getBuild, listBuilds } from "./buildStore.js";
 import { localizeAgent, localizeDriveDisc, localizeMaterial, localizeWEngine, readLocale } from "./localization.js";
 import { type AssetKind, type AssetVariant, iconManifestItem, renderAssetSvg, withImages } from "./assets.js";
-import { getNanokaDataset, getNanokaSourceMeta, nanokaDatasetSchema } from "./nanokaSource.js";
+import {
+  getNanokaDataset,
+  getNanokaDatasetPreview,
+  getNanokaSourceMeta,
+  getNanokaSourceSummary,
+  nanokaDatasetSchema
+} from "./nanokaSource.js";
 
 const app = Fastify({
   logger: true
@@ -48,10 +54,58 @@ app.get("/api/source/latest", async (request, reply) => {
   }
 });
 
+app.get("/api/source/latest/summary", async (request, reply) => {
+  try {
+    return await getNanokaSourceSummary();
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(502).send({ error: "Failed to fetch latest upstream source summary" });
+  }
+});
+
+app.get("/api/source/latest/diff", async (request, reply) => {
+  try {
+    const summary = await getNanokaSourceSummary();
+    const localCounts = {
+      character: allAgents.length,
+      weapon: wEngines.length,
+      equipment: driveDiscs.length,
+      item: materials.length
+    };
+
+    return {
+      source: summary.source,
+      version: summary.version,
+      localCounts,
+      upstreamCounts: Object.fromEntries(summary.datasets.map((dataset) => [dataset.dataset, dataset.count])),
+      comparable: {
+        character: compareCount(localCounts.character, summary.datasets.find((dataset) => dataset.dataset === "character")?.count),
+        weapon: compareCount(localCounts.weapon, summary.datasets.find((dataset) => dataset.dataset === "weapon")?.count),
+        equipment: compareCount(localCounts.equipment, summary.datasets.find((dataset) => dataset.dataset === "equipment")?.count),
+        item: compareCount(localCounts.item, summary.datasets.find((dataset) => dataset.dataset === "item")?.count)
+      },
+      notes: [
+        "character compares local agents including upcoming agents against upstream character records.",
+        "weapon compares local W-Engines against upstream weapon records.",
+        "equipment compares local drive discs against upstream equipment records.",
+        "item is not one-to-one because the upstream item dataset contains many item categories beyond local materials."
+      ]
+    };
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(502).send({ error: "Failed to compare latest upstream data" });
+  }
+});
+
 app.get("/api/source/latest/:dataset", async (request, reply) => {
   const params = z.object({ dataset: nanokaDatasetSchema }).parse(request.params);
+  const query = z.object({ preview: z.coerce.boolean().optional(), limit: z.coerce.number().int().min(1).max(50).optional() }).parse(request.query);
 
   try {
+    if (query.preview) {
+      return await getNanokaDatasetPreview(params.dataset, query.limit ?? 10);
+    }
+
     return await getNanokaDataset(params.dataset);
   } catch (error) {
     request.log.error(error);
@@ -366,4 +420,20 @@ function localizeAssetItem(kind: AssetKind, item: NonNullable<ReturnType<typeof 
 function getAssetLabel(item: unknown) {
   const maybeLocalized = item as { localized?: { name?: string }; name?: string };
   return maybeLocalized.localized?.name ?? maybeLocalized.name ?? "ZZZ";
+}
+
+function compareCount(local: number, upstream: number | undefined) {
+  if (upstream === undefined) {
+    return {
+      local,
+      upstream: null,
+      delta: null
+    };
+  }
+
+  return {
+    local,
+    upstream,
+    delta: upstream - local
+  };
 }

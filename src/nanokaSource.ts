@@ -92,6 +92,53 @@ export async function getNanokaSourceMeta() {
   };
 }
 
+export async function getNanokaSourceSummary() {
+  const version = await getLatestNanokaVersion();
+  const datasets = await Promise.all(
+    nanokaDatasetSchema.options.map(async (dataset) => {
+      const result = await getNanokaDataset(dataset);
+      return {
+        dataset,
+        url: result.url,
+        count: countRecords(result.data),
+        cached: result.cached
+      };
+    })
+  );
+
+  return {
+    source: "zzz.nanoka.cc",
+    version,
+    datasets
+  };
+}
+
+export async function getNanokaDatasetPreview(dataset: NanokaDataset, limit: number) {
+  const result = await getNanokaDataset(dataset);
+  const entries = Object.entries(asRecord(result.data)).slice(0, limit);
+
+  return {
+    version: result.version,
+    dataset: result.dataset,
+    url: result.url,
+    count: countRecords(result.data),
+    limit,
+    items: entries.map(([id, value]) => ({ id, value }))
+  };
+}
+
 function datasetUrl(version: string, dataset: NanokaDataset) {
   return `${STATIC_BASE}/${version}/${datasetPaths[dataset]}`;
+}
+
+function countRecords(data: unknown) {
+  return Object.keys(asRecord(data)).length;
+}
+
+function asRecord(data: unknown): Record<string, unknown> {
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    return data as Record<string, unknown>;
+  }
+
+  return {};
 }
