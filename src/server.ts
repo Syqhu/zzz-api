@@ -7,7 +7,7 @@ import { agents, allAgents, datasetMeta, driveDiscs, materials, upcomingAgents, 
 import { calculateAgentLevelCosts } from "./upgrade.js";
 import { createBuild, getBuild, listBuilds } from "./buildStore.js";
 import { localizeAgent, localizeDriveDisc, localizeMaterial, localizeWEngine, readLocale } from "./localization.js";
-import { type AssetKind, type AssetVariant, iconManifestItem, renderAssetSvg, withImages } from "./assets.js";
+import { type AssetKind, type AssetVariant, iconManifestItem, officialIconUrl, renderAssetSvg, withImages } from "./assets.js";
 import {
   getNanokaDataset,
   getNanokaDatasetPreview,
@@ -156,8 +156,18 @@ app.get("/api/assets/:kind/:itemId/:variant", async (request, reply) => {
     .parse(request.params);
   const query = z.object({ lang: z.string().optional() }).parse(request.query);
   const locale = readLocale(query.lang);
-  const variant = parseAssetVariant(params.variant);
+  const officialVariant = parseOfficialAssetVariant(params.variant);
   const item = findAssetItem(params.kind, params.itemId);
+
+  if (officialVariant) {
+    if (!item) {
+      return reply.code(404).send({ error: "Official asset not found" });
+    }
+
+    return reply.redirect(officialAssetRedirectUrl(params.kind, item, officialVariant), 302);
+  }
+
+  const variant = parseAssetVariant(params.variant);
 
   if (!item || !variant) {
     return reply.code(404).send({ error: "Asset not found" });
@@ -498,6 +508,10 @@ function parseAssetVariant(value: string): AssetVariant | undefined {
   return normalized === "icon" || normalized === "card" ? normalized : undefined;
 }
 
+function parseOfficialAssetVariant(value: string) {
+  return value === "official-icon" || value === "official-card" ? value : undefined;
+}
+
 function findAssetItem(kind: AssetKind, itemId: string) {
   if (kind === "agents") {
     return allAgents.find((item) => item.id === itemId);
@@ -527,6 +541,15 @@ function localizeAssetItem(kind: AssetKind, item: NonNullable<ReturnType<typeof 
 function getAssetLabel(item: unknown) {
   const maybeLocalized = item as { localized?: { name?: string }; name?: string };
   return maybeLocalized.localized?.name ?? maybeLocalized.name ?? "ZZZ";
+}
+
+function officialAssetRedirectUrl(kind: AssetKind, item: NonNullable<ReturnType<typeof findAssetItem>>, variant: "official-icon" | "official-card") {
+  const base = withImages(kind, item as { id: string; name: string });
+  if (variant === "official-card") {
+    return base.images.card;
+  }
+
+  return officialIconUrl(kind, item as { id: string; name: string });
 }
 
 function compareCount(local: number, upstream: number | undefined) {

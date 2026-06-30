@@ -3,10 +3,11 @@ import type { AssetKind } from "./assets.js";
 type OfficialAsset = {
   icon: string;
   card?: string;
-  source: "hakush" | "fandom-special-redirect";
+  source: "hoyoverse-official" | "hakush" | "fandom-special-redirect";
 };
 
 const hakush = (path: string) => `https://api.hakush.in/zzz/UI/${path}`;
+const hoyoverseCdn = (path: string) => `https://fastcdn.hoyoverse.com/content-v2/nap/${path}`;
 
 const agentAssets: Record<string, OfficialAsset> = {
   "alexandrina-sebastiane": { icon: hakush("IconRoleCrop22.webp"), card: hakush("IconRole22.webp"), source: "hakush" },
@@ -33,7 +34,11 @@ const agentAssets: Record<string, OfficialAsset> = {
   lighter: { icon: hakush("IconRoleCrop26.webp"), card: hakush("IconRole26.webp"), source: "hakush" },
   "lucia-elowen": { icon: hakush("IconRoleCrop50.webp"), card: hakush("IconRole50.webp"), source: "hakush" },
   "luciana-de-montefio": { icon: hakush("IconRoleCrop27.webp"), card: hakush("IconRole27.webp"), source: "hakush" },
-  "nekomiya-mana": { icon: hakush("IconRoleCrop11.webp"), card: hakush("IconRole11.webp"), source: "hakush" },
+  "nekomiya-mana": {
+    icon: hoyoverseCdn("102427/ef4310d8f18a62aa70f412fb534b1086_7779971017639587835.png"),
+    card: hoyoverseCdn("102427/2aaff92fc1ef7183af44bfaf83c436af_4830154317591375669.png"),
+    source: "hoyoverse-official"
+  },
   nicole: { icon: hakush("IconRoleCrop12.webp"), card: hakush("IconRole12.webp"), source: "hakush" },
   "orphie-magnusson-and-magus": { icon: hakush("IconRoleCrop49.webp"), card: hakush("IconRole49.webp"), source: "hakush" },
   "pan-yinhu": { icon: hakush("IconRoleCrop45.webp"), card: hakush("IconRole45.webp"), source: "hakush" },
