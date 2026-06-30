@@ -11,8 +11,11 @@ import { type AssetKind, type AssetVariant, iconManifestItem, renderAssetSvg, wi
 import {
   getNanokaDataset,
   getNanokaDatasetPreview,
+  getNanokaItem,
   getNanokaSourceMeta,
   getNanokaSourceSummary,
+  listNanokaItems,
+  type NanokaCatalogItem,
   nanokaDatasetSchema
 } from "./nanokaSource.js";
 
@@ -113,6 +116,36 @@ app.get("/api/source/latest/:dataset", async (request, reply) => {
   }
 });
 
+app.get("/api/assets/items/:itemId/:variant", async (request, reply) => {
+  const params = z
+    .object({
+      itemId: z.string(),
+      variant: z.string()
+    })
+    .parse(request.params);
+  const variant = parseAssetVariant(params.variant);
+
+  if (!variant) {
+    return reply.code(404).send({ error: "Asset not found" });
+  }
+
+  try {
+    const item = await getNanokaItem(params.itemId);
+
+    if (!item) {
+      return reply.code(404).send({ error: "Item asset not found" });
+    }
+
+    return reply
+      .type("image/svg+xml; charset=utf-8")
+      .header("Cache-Control", "public, max-age=86400")
+      .send(renderNanokaItemSvg(item, variant));
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(502).send({ error: "Failed to fetch latest upstream item asset" });
+  }
+});
+
 app.get("/api/assets/:kind/:itemId/:variant", async (request, reply) => {
   const params = z
     .object({
@@ -140,22 +173,40 @@ app.get("/api/assets/:kind/:itemId/:variant", async (request, reply) => {
 });
 
 app.get("/api/icons", async (request) => {
-  const query = z.object({ lang: z.string().optional(), includeUpcoming: z.coerce.boolean().optional() }).parse(request.query);
+  const query = z
+    .object({ lang: z.string().optional(), includeUpcoming: z.coerce.boolean().optional(), includeItems: z.coerce.boolean().optional() })
+    .parse(request.query);
   const locale = readLocale(query.lang);
   const lang = locale === "ja" ? "ja" : undefined;
   const agentSource = query.includeUpcoming ? allAgents : agents;
 
-  return {
+  const response: Record<string, unknown> = {
     agents: agentSource.map((agent) => iconManifestItem("agents", localizeAgent(agent, locale), lang)),
     wEngines: wEngines.map((wEngine) => iconManifestItem("w-engines", localizeWEngine(wEngine, locale), lang)),
     driveDiscs: driveDiscs.map((driveDisc) => iconManifestItem("drive-discs", localizeDriveDisc(driveDisc, locale), lang)),
     materials: materials.map((material) => iconManifestItem("materials", localizeMaterial(material, locale), lang))
   };
+
+  if (query.includeItems) {
+    response.items = (await listNanokaItems({ limit: 200 })).items.map(iconManifestNanokaItem);
+  }
+
+  return response;
 });
 
 app.get("/api/icons/:kind", async (request, reply) => {
-  const params = z.object({ kind: z.enum(["agents", "w-engines", "drive-discs", "materials"]) }).parse(request.params);
-  const query = z.object({ lang: z.string().optional(), includeUpcoming: z.coerce.boolean().optional() }).parse(request.query);
+  const params = z.object({ kind: z.enum(["agents", "w-engines", "drive-discs", "materials", "items"]) }).parse(request.params);
+  const query = z
+    .object({
+      lang: z.string().optional(),
+      includeUpcoming: z.coerce.boolean().optional(),
+      q: z.string().optional(),
+      rank: z.coerce.number().int().optional(),
+      class: z.coerce.number().int().optional(),
+      limit: z.coerce.number().int().min(1).max(200).optional(),
+      offset: z.coerce.number().int().min(0).optional()
+    })
+    .parse(request.query);
   const locale = readLocale(query.lang);
   const lang = locale === "ja" ? "ja" : undefined;
 
@@ -174,6 +225,26 @@ app.get("/api/icons/:kind", async (request, reply) => {
 
   if (params.kind === "materials") {
     return materials.map((material) => iconManifestItem("materials", localizeMaterial(material, locale), lang));
+  }
+
+  if (params.kind === "items") {
+    try {
+      const result = await listNanokaItems({
+        q: query.q,
+        rank: query.rank,
+        class: query.class,
+        limit: query.limit,
+        offset: query.offset
+      });
+
+      return {
+        ...result,
+        items: result.items.map(iconManifestNanokaItem)
+      };
+    } catch (error) {
+      request.log.error(error);
+      return reply.code(502).send({ error: "Failed to fetch latest upstream item icons" });
+    }
   }
 
   return reply.code(404).send({ error: "Icon kind not found" });
@@ -313,6 +384,42 @@ app.get("/api/materials/:materialId", async (request, reply) => {
   return withImages("materials", localizeMaterial(material, locale), lang);
 });
 
+app.get("/api/items", async (request, reply) => {
+  const query = z
+    .object({
+      q: z.string().optional(),
+      rank: z.coerce.number().int().optional(),
+      class: z.coerce.number().int().optional(),
+      limit: z.coerce.number().int().min(1).max(200).optional(),
+      offset: z.coerce.number().int().min(0).optional()
+    })
+    .parse(request.query);
+
+  try {
+    return await listNanokaItems(query);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(502).send({ error: "Failed to fetch latest upstream items" });
+  }
+});
+
+app.get("/api/items/:itemId", async (request, reply) => {
+  const params = z.object({ itemId: z.string() }).parse(request.params);
+
+  try {
+    const item = await getNanokaItem(params.itemId);
+
+    if (!item) {
+      return reply.code(404).send({ error: "Item not found" });
+    }
+
+    return item;
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(502).send({ error: "Failed to fetch latest upstream item" });
+  }
+});
+
 app.get("/api/upgrade/agent-costs", async (request, reply) => {
   const query = z
     .object({
@@ -436,4 +543,84 @@ function compareCount(local: number, upstream: number | undefined) {
     upstream,
     delta: upstream - local
   };
+}
+
+function iconManifestNanokaItem(item: NanokaCatalogItem) {
+  return {
+    id: item.id,
+    name: item.name,
+    rank: item.rank,
+    class: item.class,
+    icon: item.images.generatedIcon,
+    generatedIcon: item.images.generatedIcon,
+    sourcePath: item.images.sourcePath,
+    source: item.images.source
+  };
+}
+
+function renderNanokaItemSvg(item: NanokaCatalogItem, variant: AssetVariant) {
+  const rarity = item.rank ? `Rank ${item.rank}` : "ITEM";
+  const accent = item.rank === 4 ? "#f6c65b" : item.rank === 3 ? "#c790ff" : item.rank === 2 ? "#7fb7ff" : "#68d391";
+  const size = variant === "card" ? { width: 640, height: 360 } : { width: 256, height: 256 };
+  const initial = escapeXml(item.name.trim().slice(0, 1).toUpperCase() || "?");
+  const label = escapeXml(item.name);
+  const subtitle = escapeXml(`Item ${item.id}${item.class === null ? "" : ` / Class ${item.class}`}`);
+
+  if (variant === "icon") {
+    return svg(size.width, size.height, `
+      <defs>
+        <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="#181810"/>
+          <stop offset="100%" stop-color="#050608"/>
+        </linearGradient>
+      </defs>
+      <rect width="256" height="256" rx="42" fill="url(#bg)"/>
+      <rect x="42" y="42" width="172" height="172" rx="34" fill="${accent}" opacity="0.16"/>
+      <circle cx="128" cy="120" r="54" fill="none" stroke="${accent}" stroke-width="8"/>
+      <text x="128" y="143" text-anchor="middle" font-size="72" font-weight="800" fill="#fff7da">${initial}</text>
+      <text x="128" y="224" text-anchor="middle" font-size="16" font-weight="800" fill="${accent}">ITEM</text>
+    `);
+  }
+
+  return svg(size.width, size.height, `
+    <defs>
+      <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0%" stop-color="#181810"/>
+        <stop offset="100%" stop-color="#050608"/>
+      </linearGradient>
+      <radialGradient id="glow" cx="76%" cy="28%" r="80%">
+        <stop offset="0%" stop-color="${accent}" stop-opacity="0.34"/>
+        <stop offset="100%" stop-color="${accent}" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="640" height="360" fill="url(#bg)"/>
+    <rect width="640" height="360" fill="url(#glow)"/>
+    <circle cx="508" cy="122" r="76" fill="${accent}" opacity="0.18"/>
+    <circle cx="508" cy="122" r="54" fill="none" stroke="${accent}" stroke-width="8"/>
+    <text x="508" y="145" text-anchor="middle" font-size="76" font-weight="800" fill="#fff7da">${initial}</text>
+    <text x="48" y="78" font-size="20" font-weight="800" fill="${accent}">ITEM</text>
+    <text x="48" y="166" font-size="42" font-weight="800" fill="#fff7da">${label}</text>
+    <text x="50" y="214" font-size="23" font-weight="600" fill="#fff7da" opacity="0.78">${subtitle}</text>
+    <rect x="48" y="286" width="192" height="34" rx="17" fill="${accent}"/>
+    <text x="144" y="309" text-anchor="middle" font-size="17" font-weight="800" fill="#101010">${escapeXml(rarity)}</text>
+  `);
+}
+
+function svg(width: number, height: number, body: string) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Noto Sans JP", Arial, sans-serif; }
+  </style>
+  ${body}
+</svg>`;
+}
+
+function escapeXml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
 }

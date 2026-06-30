@@ -7,7 +7,7 @@ This project provides static game catalog data, Japanese display labels, image U
 ## Features
 
 - Agents through ZZZ Version 3.0
-- W-Engines, drive discs, and materials catalog data
+- W-Engines, drive discs, materials, and latest upstream item catalog data
 - Japanese labels via `lang=ja`
 - Hakush/Wiki icon URLs with generated SVG fallbacks
 - Agent level-cost helper
@@ -98,13 +98,20 @@ GET  /api/materials
 GET  /api/materials?category=promotion
 GET  /api/materials/:materialId
 
+GET  /api/items
+GET  /api/items?q=denny
+GET  /api/items?rank=4&limit=20&offset=0
+GET  /api/items/:itemId
+
 GET  /api/icons
 GET  /api/icons?lang=ja
+GET  /api/icons?includeItems=true
 GET  /api/icons/agents
 GET  /api/icons/agents?includeUpcoming=true
 GET  /api/icons/w-engines
 GET  /api/icons/drive-discs
 GET  /api/icons/materials
+GET  /api/icons/items?q=tape&limit=20
 
 GET  /api/assets/agents/:agentId/icon.svg
 GET  /api/assets/agents/:agentId/card.svg
@@ -114,6 +121,8 @@ GET  /api/assets/drive-discs/:driveDiscId/icon.svg
 GET  /api/assets/drive-discs/:driveDiscId/card.svg
 GET  /api/assets/materials/:materialId/icon.svg
 GET  /api/assets/materials/:materialId/card.svg
+GET  /api/assets/items/:itemId/icon.svg
+GET  /api/assets/items/:itemId/card.svg
 
 GET  /api/upgrade/agent-costs?agentId=anby&from=1&to=60&lang=ja
 
@@ -160,7 +169,10 @@ All icon URLs can also be fetched as a manifest:
 ```txt
 GET /api/icons?lang=ja
 GET /api/icons/w-engines
+GET /api/icons/items?q=denny
 ```
+
+Latest upstream items from `zzz.nanoka.cc` include `images.generatedIcon`, `images.generatedCard`, and the upstream `images.sourcePath` from the game data. The generated SVG endpoints are local fallbacks for clients that need a stable image URL.
 
 ## Notes
 
@@ -168,7 +180,7 @@ This project does not use HoYoLAB credentials or private account data.
 
 Agent data is seeded through Version 3.0 as of 2026-06-29. `/api/agents` returns released agents by default. Use `includeUpcoming=true` or `/api/agents/upcoming` to include announced Version 3.0 upcoming agents.
 
-W-Engines, drive discs, and materials are implemented as catalog records. Some long effect text can be refined later without changing stable IDs.
+W-Engines, drive discs, and materials are implemented as catalog records. `/api/items` is powered by the latest public `zzz.nanoka.cc` item dataset and supports search, rank filtering, class filtering, and pagination. Some long effect text can be refined later without changing stable IDs.
 
 ## Latest Upstream Data
 
