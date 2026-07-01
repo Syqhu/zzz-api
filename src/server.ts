@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
+import sharp from "sharp";
 import { z } from "zod";
 import { agents, allAgents, datasetMeta, driveDiscs, materials, upcomingAgents, wEngines } from "./data.js";
 import { calculateAgentLevelCosts } from "./upgrade.js";
@@ -137,7 +138,21 @@ app.get("/api/versions/:version", async (request) => {
 });
 
 app.get("/api/image-proxy", async (request, reply) => {
-  const query = z.object({ url: z.string().url() }).parse(request.query);
+  const queryResult = z
+    .object({
+      url: z.string().url(),
+      w: z.coerce.number().int().min(1).max(2048).optional(),
+      h: z.coerce.number().int().min(1).max(2048).optional(),
+      fit: z.enum(["cover", "contain", "fill", "inside", "outside"]).optional(),
+      format: z.enum(["webp", "png", "jpeg"]).optional()
+    })
+    .safeParse(request.query);
+
+  if (!queryResult.success) {
+    return reply.code(400).send({ error: "Invalid image proxy query", issues: queryResult.error.issues });
+  }
+
+  const query = queryResult.data;
   const parsed = new URL(query.url);
   const allowedHosts = new Set(["fastcdn.hoyoverse.com", "static.nanoka.cc", "api.hakush.in", "zenless-zone-zero.fandom.com"]);
 
@@ -153,12 +168,20 @@ app.get("/api/image-proxy", async (request, reply) => {
       return reply.code(502).send({ error: "Failed to fetch image" });
     }
 
-    const body = Buffer.from(await response.arrayBuffer());
+    const original = Buffer.from(await response.arrayBuffer());
+    const resized = await resizeImage(original, {
+      width: query.w,
+      height: query.h,
+      fit: query.fit,
+      format: query.format
+    });
+
     return reply
-      .type(contentType)
+      .type(resized.contentType ?? contentType)
       .header("Cache-Control", "public, max-age=86400")
       .header("X-Image-Source", parsed.hostname)
-      .send(body);
+      .header("X-Image-Resized", resized.resized ? "true" : "false")
+      .send(resized.body);
   } catch (error) {
     request.log.error(error);
     return reply.code(502).send({ error: "Failed to proxy image" });
@@ -774,6 +797,46 @@ function compareVersions(a: string, b: string) {
   }
 
   return a.localeCompare(b);
+}
+
+async function resizeImage(
+  body: Buffer,
+  options: {
+    width?: number;
+    height?: number;
+    fit?: "cover" | "contain" | "fill" | "inside" | "outside";
+    format?: "webp" | "png" | "jpeg";
+  }
+) {
+  if (!options.width && !options.height && !options.format) {
+    return {
+      body,
+      contentType: undefined,
+      resized: false
+    };
+  }
+
+  let pipeline = sharp(body, { limitInputPixels: 4096 * 4096 }).resize({
+    width: options.width,
+    height: options.height,
+    fit: options.fit ?? "inside",
+    withoutEnlargement: true
+  });
+  const format = options.format ?? "webp";
+
+  if (format === "png") {
+    pipeline = pipeline.png();
+  } else if (format === "jpeg") {
+    pipeline = pipeline.jpeg({ quality: 88 });
+  } else {
+    pipeline = pipeline.webp({ quality: 88 });
+  }
+
+  return {
+    body: await pipeline.toBuffer(),
+    contentType: `image/${format}`,
+    resized: true
+  };
 }
 
 function isString(value: unknown): value is string {

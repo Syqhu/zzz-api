@@ -87,10 +87,11 @@ GET  /api/versions/latest
 GET  /api/versions/3.0
 
 GET  /api/search?q=anby
-GET  /api/search?q=猫又&lang=ja&includeUpcoming=true
+GET  /api/search?q=%E7%8C%AB%E5%8F%88&lang=ja&includeUpcoming=true
 GET  /api/search?q=tape&includeItems=true&limit=10
 
 GET  /api/image-proxy?url=https%3A%2F%2Fstatic.nanoka.cc%2Fassets%2Fzzz%2FGachaTicket1.webp
+GET  /api/image-proxy?url=https%3A%2F%2Fstatic.nanoka.cc%2Fassets%2Fzzz%2FGachaTicket1.webp&w=128&format=webp
 
 GET  /api/agents
 GET  /api/agents?attribute=Fire
