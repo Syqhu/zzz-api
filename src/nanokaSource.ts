@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const HOME_URL = "https://zzz.nanoka.cc/";
 const STATIC_BASE = "https://static.nanoka.cc/zzz";
+const ASSET_BASE = "https://static.nanoka.cc/assets/zzz";
 
 export const nanokaDatasetSchema = z.enum(["character", "weapon", "equipment", "bangboo", "monster", "item"]);
 export type NanokaDataset = z.infer<typeof nanokaDatasetSchema>;
@@ -26,10 +27,12 @@ export type NanokaCatalogItem = {
   class: number | null;
   iconPath: string | null;
   images: {
+    icon: string | null;
     generatedIcon: string;
+    card: string | null;
     generatedCard: string;
     sourcePath: string | null;
-    source: "nanoka";
+    source: "nanoka-assets";
   };
   source: {
     name: "zzz.nanoka.cc";
@@ -213,6 +216,7 @@ function normalizeNanokaItem(id: string, value: unknown, version: string): Nanok
   const rank = readNumber(record.rank);
   const itemClass = readNumber(record.class);
   const iconPath = readString(record.icon) ?? null;
+  const iconUrl = nanokaAssetUrlFromPath(iconPath);
 
   return {
     id,
@@ -221,10 +225,12 @@ function normalizeNanokaItem(id: string, value: unknown, version: string): Nanok
     class: itemClass,
     iconPath,
     images: {
+      icon: iconUrl,
       generatedIcon: `/api/assets/items/${id}/icon.svg`,
+      card: iconUrl,
       generatedCard: `/api/assets/items/${id}/card.svg`,
       sourcePath: iconPath,
-      source: "nanoka"
+      source: "nanoka-assets"
     },
     source: {
       name: "zzz.nanoka.cc",
@@ -240,4 +246,18 @@ function readString(value: unknown) {
 
 function readNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function nanokaAssetUrlFromPath(path: string | null) {
+  if (!path) {
+    return null;
+  }
+
+  const filename = path.split("/").at(-1);
+  if (!filename) {
+    return null;
+  }
+
+  const name = filename.replace(/\.[^.]+$/, "");
+  return `${ASSET_BASE}/${encodeURIComponent(name)}.webp`;
 }

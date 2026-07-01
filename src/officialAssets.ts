@@ -3,11 +3,12 @@ import type { AssetKind } from "./assets.js";
 type OfficialAsset = {
   icon: string;
   card?: string;
-  source: "hoyoverse-official" | "hakush" | "fandom-special-redirect";
+  source: "hoyoverse-official" | "nanoka-assets" | "hakush" | "fandom-special-redirect";
 };
 
 const hakush = (path: string) => `https://api.hakush.in/zzz/UI/${path}`;
 const hoyoverseCdn = (path: string) => `https://fastcdn.hoyoverse.com/content-v2/nap/${path}`;
+const nanokaAsset = (name: string) => `https://static.nanoka.cc/assets/zzz/${encodeURIComponent(name)}.webp`;
 
 const agentAssets: Record<string, OfficialAsset> = {
   "alexandrina-sebastiane": { icon: hoyoverseCdn("113612/24f2740a52110a0491ae5bc49ecb23ba_4790537105761997346.png"), card: hoyoverseCdn("113612/24f2740a52110a0491ae5bc49ecb23ba_4790537105761997346.png"), source: "hoyoverse-official" },
@@ -68,6 +69,101 @@ const agentAssets: Record<string, OfficialAsset> = {
   "norma-hollowell": { icon: hoyoverseCdn("163786/a29aae92640f03e7b757fe9d566e293a_7326536601431031510.png"), card: hoyoverseCdn("163786/a29aae92640f03e7b757fe9d566e293a_7326536601431031510.png"), source: "hoyoverse-official" }
 };
 
+const wEngineAssets: Record<string, OfficialAsset> = {
+  "angel-in-the-shell": { icon: nanokaAsset("Weapon_S_1501"), card: nanokaAsset("Weapon_S_1501"), source: "nanoka-assets" },
+  "bellicose-blaze": { icon: nanokaAsset("Weapon_S_1301"), card: nanokaAsset("Weapon_S_1301"), source: "nanoka-assets" },
+  "blazing-laurel": { icon: nanokaAsset("Weapon_S_1161"), card: nanokaAsset("Weapon_S_1161"), source: "nanoka-assets" },
+  "chief-sidekick": { icon: nanokaAsset("Weapon_S_1571"), card: nanokaAsset("Weapon_S_1571"), source: "nanoka-assets" },
+  "cloudcleave-radiance": { icon: nanokaAsset("Weapon_S_1431"), card: nanokaAsset("Weapon_S_1431"), source: "nanoka-assets" },
+  "cordis-germina": { icon: nanokaAsset("Weapon_S_1461"), card: nanokaAsset("Weapon_S_1461"), source: "nanoka-assets" },
+  "deep-sea-visitor": { icon: nanokaAsset("Weapon_S_1191"), card: nanokaAsset("Weapon_S_1191"), source: "nanoka-assets" },
+  "dreamlit-hearth": { icon: nanokaAsset("Weapon_S_1451"), card: nanokaAsset("Weapon_S_1451"), source: "nanoka-assets" },
+  "elegant-vanity": { icon: nanokaAsset("Weapon_S_1311"), card: nanokaAsset("Weapon_S_1311"), source: "nanoka-assets" },
+  "flamemaker-shaker": { icon: nanokaAsset("Weapon_S_1171"), card: nanokaAsset("Weapon_S_1171"), source: "nanoka-assets" },
+  "flight-of-fancy": { icon: nanokaAsset("Weapon_S_1331"), card: nanokaAsset("Weapon_S_1331"), source: "nanoka-assets" },
+  "frostfall-sickle": { icon: nanokaAsset("Weapon_S_1541"), card: nanokaAsset("Weapon_S_1541"), source: "nanoka-assets" },
+  "fusion-compiler": { icon: nanokaAsset("Weapon_S_1181"), card: nanokaAsset("Weapon_S_1181"), source: "nanoka-assets" },
+  "hailstorm-shrine": { icon: nanokaAsset("Weapon_S_1091"), card: nanokaAsset("Weapon_S_1091"), source: "nanoka-assets" },
+  "half-sugar-bunny": { icon: nanokaAsset("Weapon_S_1341"), card: nanokaAsset("Weapon_S_1341"), source: "nanoka-assets" },
+  "heartstring-nocturne": { icon: nanokaAsset("Weapon_S_1321"), card: nanokaAsset("Weapon_S_1321"), source: "nanoka-assets" },
+  "hellfire-gears": { icon: nanokaAsset("Weapon_S_1101"), card: nanokaAsset("Weapon_S_1101"), source: "nanoka-assets" },
+  "ice-jade-teapot": { icon: nanokaAsset("Weapon_S_1251"), card: nanokaAsset("Weapon_S_1251"), source: "nanoka-assets" },
+  "joyau-dore": { icon: nanokaAsset("Weapon_S_1561"), card: nanokaAsset("Weapon_S_1561"), source: "nanoka-assets" },
+  "krakens-cradle": { icon: nanokaAsset("Weapon_S_1051"), card: nanokaAsset("Weapon_S_1051"), source: "nanoka-assets" },
+  "metanukimorphosis": { icon: nanokaAsset("Weapon_S_1411"), card: nanokaAsset("Weapon_S_1411"), source: "nanoka-assets" },
+  "myriad-eclipse": { icon: nanokaAsset("Weapon_S_1291"), card: nanokaAsset("Weapon_S_1291"), source: "nanoka-assets" },
+  "neon-fantasies": { icon: nanokaAsset("Weapon_S_1511"), card: nanokaAsset("Weapon_S_1511"), source: "nanoka-assets" },
+  "practiced-perfection": { icon: nanokaAsset("Weapon_S_1401"), card: nanokaAsset("Weapon_S_1401"), source: "nanoka-assets" },
+  "qingming-birdcage": { icon: nanokaAsset("Weapon_S_1371"), card: nanokaAsset("Weapon_S_1371"), source: "nanoka-assets" },
+  "riot-suppressor-mark-vi": { icon: nanokaAsset("Weapon_S_1241"), card: nanokaAsset("Weapon_S_1241"), source: "nanoka-assets" },
+  "roaring-fur-nace": { icon: nanokaAsset("Weapon_S_1391"), card: nanokaAsset("Weapon_S_1391"), source: "nanoka-assets" },
+  "serpentine-seeker": { icon: nanokaAsset("Weapon_S_1521"), card: nanokaAsset("Weapon_S_1521"), source: "nanoka-assets" },
+  "severed-innocence": { icon: nanokaAsset("Weapon_S_1381"), card: nanokaAsset("Weapon_S_1381"), source: "nanoka-assets" },
+  "sharpened-stinger": { icon: nanokaAsset("Weapon_S_1261"), card: nanokaAsset("Weapon_S_1261"), source: "nanoka-assets" },
+  "sol-exuvia": { icon: nanokaAsset("Weapon_S_Common_04"), card: nanokaAsset("Weapon_S_Common_04"), source: "nanoka-assets" },
+  "spectral-gaze": { icon: nanokaAsset("Weapon_S_1361"), card: nanokaAsset("Weapon_S_1361"), source: "nanoka-assets" },
+  "starlight-rider-faceplate": { icon: nanokaAsset("Weapon_S_1531"), card: nanokaAsset("Weapon_S_1531"), source: "nanoka-assets" },
+  "steel-cushion": { icon: nanokaAsset("Weapon_S_1021"), card: nanokaAsset("Weapon_S_1021"), source: "nanoka-assets" },
+  "the-brimstone": { icon: nanokaAsset("Weapon_S_1041"), card: nanokaAsset("Weapon_S_1041"), source: "nanoka-assets" },
+  "the-restrained": { icon: nanokaAsset("Weapon_S_1141"), card: nanokaAsset("Weapon_S_1141"), source: "nanoka-assets" },
+  "thoughtbop": { icon: nanokaAsset("Weapon_S_1491"), card: nanokaAsset("Weapon_S_1491"), source: "nanoka-assets" },
+  "timeweaver": { icon: nanokaAsset("Weapon_S_1221"), card: nanokaAsset("Weapon_S_1221"), source: "nanoka-assets" },
+  "tusks-of-fury": { icon: nanokaAsset("Weapon_S_1071"), card: nanokaAsset("Weapon_S_1071"), source: "nanoka-assets" },
+  "weeping-cradle": { icon: nanokaAsset("Weapon_S_1211"), card: nanokaAsset("Weapon_S_1211"), source: "nanoka-assets" },
+  "wrathful-vajra": { icon: nanokaAsset("Weapon_S_1471"), card: nanokaAsset("Weapon_S_1471"), source: "nanoka-assets" },
+  "yesterday-calls": { icon: nanokaAsset("Weapon_S_1481"), card: nanokaAsset("Weapon_S_1481"), source: "nanoka-assets" },
+  "zanshin-herb-case": { icon: nanokaAsset("Weapon_S_1201"), card: nanokaAsset("Weapon_S_1201"), source: "nanoka-assets" },
+  "bashful-demon": { icon: nanokaAsset("Weapon_A_1131"), card: nanokaAsset("Weapon_A_1131"), source: "nanoka-assets" },
+  "big-cylinder": { icon: nanokaAsset("Weapon_A_1121"), card: nanokaAsset("Weapon_A_1121"), source: "nanoka-assets" },
+  "box-cutter": { icon: nanokaAsset("Weapon_A_1351"), card: nanokaAsset("Weapon_A_1351"), source: "nanoka-assets" },
+  "bunny-band": { icon: nanokaAsset("Weapon_A_Common_10"), card: nanokaAsset("Weapon_A_Common_10"), source: "nanoka-assets" },
+  "cannon-rotor": { icon: nanokaAsset("Weapon_S_Common_01"), card: nanokaAsset("Weapon_S_Common_01"), source: "nanoka-assets" },
+  "cauldron-of-clarity": { icon: nanokaAsset("Weapon_A_Common_19"), card: nanokaAsset("Weapon_A_Common_19"), source: "nanoka-assets" },
+  "demara-battery-mark-ii": { icon: nanokaAsset("Weapon_A_1011"), card: nanokaAsset("Weapon_A_1011"), source: "nanoka-assets" },
+  "drill-rig-red-axis": { icon: nanokaAsset("Weapon_A_1111"), card: nanokaAsset("Weapon_A_1111"), source: "nanoka-assets" },
+  "electro-lip-gloss": { icon: nanokaAsset("Weapon_A_Common_09"), card: nanokaAsset("Weapon_A_Common_09"), source: "nanoka-assets" },
+  "gilded-blossom": { icon: nanokaAsset("Weapon_A_Common_13"), card: nanokaAsset("Weapon_A_Common_13"), source: "nanoka-assets" },
+  "grill-owisp": { icon: nanokaAsset("Weapon_A_1441"), card: nanokaAsset("Weapon_A_1441"), source: "nanoka-assets" },
+  "housekeeper": { icon: nanokaAsset("Weapon_A_1061"), card: nanokaAsset("Weapon_A_1061"), source: "nanoka-assets" },
+  "kaboom-the-cannon": { icon: nanokaAsset("Weapon_A_1151"), card: nanokaAsset("Weapon_A_1151"), source: "nanoka-assets" },
+  "marcato-desire": { icon: nanokaAsset("Weapon_A_Common_15"), card: nanokaAsset("Weapon_A_Common_15"), source: "nanoka-assets" },
+  "original-transmorpher": { icon: nanokaAsset("Weapon_A_Common_07"), card: nanokaAsset("Weapon_A_Common_07"), source: "nanoka-assets" },
+  "peacekeeper-specialized": { icon: nanokaAsset("Weapon_A_1271"), card: nanokaAsset("Weapon_A_1271"), source: "nanoka-assets" },
+  "precious-fossilized-core": { icon: nanokaAsset("Weapon_A_Common_06"), card: nanokaAsset("Weapon_A_Common_06"), source: "nanoka-assets" },
+  "puzzle-sphere": { icon: nanokaAsset("Weapon_A_Common_12"), card: nanokaAsset("Weapon_A_Common_12"), source: "nanoka-assets" },
+  "radiowave-journey": { icon: nanokaAsset("Weapon_A_Common_14"), card: nanokaAsset("Weapon_A_Common_14"), source: "nanoka-assets" },
+  "rainforest-gourmet": { icon: nanokaAsset("Weapon_A_Common_03"), card: nanokaAsset("Weapon_A_Common_03"), source: "nanoka-assets" },
+  "reel-projector": { icon: nanokaAsset("Weapon_A_Common_16"), card: nanokaAsset("Weapon_A_Common_16"), source: "nanoka-assets" },
+  "roaring-ride": { icon: nanokaAsset("Weapon_A_1281"), card: nanokaAsset("Weapon_A_1281"), source: "nanoka-assets" },
+  "six-shooter": { icon: nanokaAsset("Weapon_S_Common_03"), card: nanokaAsset("Weapon_S_Common_03"), source: "nanoka-assets" },
+  "slice-of-time": { icon: nanokaAsset("Weapon_A_Common_02"), card: nanokaAsset("Weapon_A_Common_02"), source: "nanoka-assets" },
+  "spring-embrace": { icon: nanokaAsset("Weapon_A_Common_11"), card: nanokaAsset("Weapon_A_Common_11"), source: "nanoka-assets" },
+  "starlight-engine": { icon: nanokaAsset("Weapon_A_Common_04"), card: nanokaAsset("Weapon_A_Common_04"), source: "nanoka-assets" },
+  "starlight-engine-replica": { icon: nanokaAsset("Weapon_A_1081"), card: nanokaAsset("Weapon_A_1081"), source: "nanoka-assets" },
+  "steam-oven": { icon: nanokaAsset("Weapon_A_Common_05"), card: nanokaAsset("Weapon_A_Common_05"), source: "nanoka-assets" },
+  "street-superstar": { icon: nanokaAsset("Weapon_A_Common_01"), card: nanokaAsset("Weapon_A_Common_01"), source: "nanoka-assets" },
+  "the-simmering-pot": { icon: nanokaAsset("Weapon_A_Common_20"), card: nanokaAsset("Weapon_A_Common_20"), source: "nanoka-assets" },
+  "the-vault": { icon: nanokaAsset("Weapon_A_1031"), card: nanokaAsset("Weapon_A_1031"), source: "nanoka-assets" },
+  "tremor-trigram-vessel": { icon: nanokaAsset("Weapon_A_1421"), card: nanokaAsset("Weapon_A_1421"), source: "nanoka-assets" },
+  "unfettered-game-ball": { icon: nanokaAsset("Weapon_S_Common_02"), card: nanokaAsset("Weapon_S_Common_02"), source: "nanoka-assets" },
+  "weeping-gemini": { icon: nanokaAsset("Weapon_A_Common_08"), card: nanokaAsset("Weapon_A_Common_08"), source: "nanoka-assets" },
+  "cinder-cobalt": { icon: nanokaAsset("Weapon_B_Common_15"), card: nanokaAsset("Weapon_B_Common_15"), source: "nanoka-assets" },
+  "identity-base": { icon: nanokaAsset("Weapon_B_Common_13"), card: nanokaAsset("Weapon_B_Common_13"), source: "nanoka-assets" },
+  "identity-inflection": { icon: nanokaAsset("Weapon_B_Common_14"), card: nanokaAsset("Weapon_B_Common_14"), source: "nanoka-assets" },
+  "lunar-decrescent": { icon: nanokaAsset("Weapon_B_Common_02"), card: nanokaAsset("Weapon_B_Common_02"), source: "nanoka-assets" },
+  "lunar-noviluna": { icon: nanokaAsset("Weapon_B_Common_03"), card: nanokaAsset("Weapon_B_Common_03"), source: "nanoka-assets" },
+  "lunar-pleniluna": { icon: nanokaAsset("Weapon_B_Common_01"), card: nanokaAsset("Weapon_B_Common_01"), source: "nanoka-assets" },
+  "magnetic-storm-alpha": { icon: nanokaAsset("Weapon_B_Common_10"), card: nanokaAsset("Weapon_B_Common_10"), source: "nanoka-assets" },
+  "magnetic-storm-bravo": { icon: nanokaAsset("Weapon_B_Common_11"), card: nanokaAsset("Weapon_B_Common_11"), source: "nanoka-assets" },
+  "magnetic-storm-charlie": { icon: nanokaAsset("Weapon_B_Common_12"), card: nanokaAsset("Weapon_B_Common_12"), source: "nanoka-assets" },
+  "reverb-mark-i": { icon: nanokaAsset("Weapon_B_Common_04"), card: nanokaAsset("Weapon_B_Common_04"), source: "nanoka-assets" },
+  "reverb-mark-ii": { icon: nanokaAsset("Weapon_B_Common_05"), card: nanokaAsset("Weapon_B_Common_05"), source: "nanoka-assets" },
+  "reverb-mark-iii": { icon: nanokaAsset("Weapon_B_Common_06"), card: nanokaAsset("Weapon_B_Common_06"), source: "nanoka-assets" },
+  "vortex-arrow": { icon: nanokaAsset("Weapon_B_Common_08"), card: nanokaAsset("Weapon_B_Common_08"), source: "nanoka-assets" },
+  "vortex-hatchet": { icon: nanokaAsset("Weapon_B_Common_09"), card: nanokaAsset("Weapon_B_Common_09"), source: "nanoka-assets" },
+  "vortex-revolver": { icon: nanokaAsset("Weapon_B_Common_07"), card: nanokaAsset("Weapon_B_Common_07"), source: "nanoka-assets" }
+};
+
 const driveDiscAssets: Record<string, OfficialAsset> = {
   "astral-voice": { icon: hakush("SuitAstralVoice.webp"), source: "hakush" },
   "branch-and-blade-song": { icon: hakush("SuitBranch&BladeSong.webp"), source: "hakush" },
@@ -95,6 +191,7 @@ const driveDiscAssets: Record<string, OfficialAsset> = {
 
 const officialAssets: Partial<Record<AssetKind, Record<string, OfficialAsset>>> = {
   agents: agentAssets,
+  "w-engines": wEngineAssets,
   "drive-discs": driveDiscAssets
 };
 

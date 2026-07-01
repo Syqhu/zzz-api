@@ -5,6 +5,7 @@ import swaggerUi from "@fastify/swagger-ui";
 import { z } from "zod";
 import { agents, allAgents, datasetMeta, driveDiscs, materials, upcomingAgents, wEngines } from "./data.js";
 import { calculateAgentLevelCosts } from "./upgrade.js";
+import { getAgentMaterialPlan } from "./upgradeMaterials.js";
 import { createBuild, getBuild, listBuilds } from "./buildStore.js";
 import { localizeAgent, localizeDriveDisc, localizeMaterial, localizeWEngine, readLocale } from "./localization.js";
 import { type AssetKind, type AssetVariant, iconManifestItem, officialIconUrl, renderAssetSvg, withImages } from "./assets.js";
@@ -66,6 +67,25 @@ app.get("/api/source/latest/summary", async (request, reply) => {
   }
 });
 
+app.get("/api/source/latest/check", async (request, reply) => {
+  const query = z.object({ knownVersion: z.string().optional() }).parse(request.query);
+
+  try {
+    const meta = await getNanokaSourceMeta();
+    return {
+      source: meta.source,
+      latestVersion: meta.version,
+      knownVersion: query.knownVersion ?? null,
+      changed: query.knownVersion ? query.knownVersion !== meta.version : null,
+      checkedAt: new Date().toISOString(),
+      datasets: meta.datasets
+    };
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(502).send({ error: "Failed to check latest upstream source version" });
+  }
+});
+
 app.get("/api/source/latest/diff", async (request, reply) => {
   try {
     const summary = await getNanokaSourceSummary();
@@ -97,6 +117,51 @@ app.get("/api/source/latest/diff", async (request, reply) => {
   } catch (error) {
     request.log.error(error);
     return reply.code(502).send({ error: "Failed to compare latest upstream data" });
+  }
+});
+
+app.get("/api/versions", async () => {
+  const versions = [...new Set([...allAgents, ...wEngines, ...driveDiscs].map((item) => item.releaseVersion).filter(isString))].sort(compareVersions);
+
+  return {
+    latest: datasetMeta.maxVersion,
+    versions: versions.map((version) => versionSummary(version))
+  };
+});
+
+app.get("/api/versions/latest", async () => versionSummary(datasetMeta.maxVersion));
+
+app.get("/api/versions/:version", async (request) => {
+  const params = z.object({ version: z.string() }).parse(request.params);
+  return versionSummary(params.version);
+});
+
+app.get("/api/image-proxy", async (request, reply) => {
+  const query = z.object({ url: z.string().url() }).parse(request.query);
+  const parsed = new URL(query.url);
+  const allowedHosts = new Set(["fastcdn.hoyoverse.com", "static.nanoka.cc", "api.hakush.in", "zenless-zone-zero.fandom.com"]);
+
+  if (parsed.protocol !== "https:" || !allowedHosts.has(parsed.hostname)) {
+    return reply.code(400).send({ error: "Image host is not allowed" });
+  }
+
+  try {
+    const response = await fetch(parsed);
+    const contentType = response.headers.get("content-type") ?? "";
+
+    if (!response.ok || !contentType.startsWith("image/")) {
+      return reply.code(502).send({ error: "Failed to fetch image" });
+    }
+
+    const body = Buffer.from(await response.arrayBuffer());
+    return reply
+      .type(contentType)
+      .header("Cache-Control", "public, max-age=86400")
+      .header("X-Image-Source", parsed.hostname)
+      .send(body);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(502).send({ error: "Failed to proxy image" });
   }
 });
 
@@ -260,6 +325,65 @@ app.get("/api/icons/:kind", async (request, reply) => {
   return reply.code(404).send({ error: "Icon kind not found" });
 });
 
+app.get("/api/search", async (request, reply) => {
+  const query = z
+    .object({
+      q: z.string().min(1),
+      kinds: z.string().optional(),
+      lang: z.string().optional(),
+      includeUpcoming: z.coerce.boolean().optional(),
+      includeItems: z.coerce.boolean().optional(),
+      limit: z.coerce.number().int().min(1).max(100).optional()
+    })
+    .parse(request.query);
+  const locale = readLocale(query.lang);
+  const lang = locale === "ja" ? "ja" : undefined;
+  const requestedKinds = new Set((query.kinds ?? "agents,w-engines,drive-discs,materials,items").split(",").map((kind) => kind.trim()));
+  const limit = query.limit ?? 25;
+  const results: SearchResult[] = [];
+
+  if (requestedKinds.has("agents")) {
+    const source = query.includeUpcoming ? allAgents : agents;
+    results.push(
+      ...source.map((agent) => searchResult("agents", withImages("agents", localizeAgent(agent, locale), lang), query.q, searchAliases[agent.id]))
+    );
+  }
+
+  if (requestedKinds.has("w-engines")) {
+    results.push(...wEngines.map((wEngine) => searchResult("w-engines", withImages("w-engines", localizeWEngine(wEngine, locale), lang), query.q)));
+  }
+
+  if (requestedKinds.has("drive-discs")) {
+    results.push(...driveDiscs.map((driveDisc) => searchResult("drive-discs", withImages("drive-discs", localizeDriveDisc(driveDisc, locale), lang), query.q)));
+  }
+
+  if (requestedKinds.has("materials")) {
+    results.push(...materials.map((material) => searchResult("materials", withImages("materials", localizeMaterial(material, locale), lang), query.q)));
+  }
+
+  if (requestedKinds.has("items") || query.includeItems) {
+    try {
+      const items = await listNanokaItems({ q: query.q, limit });
+      results.push(...items.items.map((item) => searchResult("items", item, query.q)));
+    } catch (error) {
+      request.log.error(error);
+      return reply.code(502).send({ error: "Failed to search latest upstream items" });
+    }
+  }
+
+  const filtered = results
+    .filter((result) => result.score > 0)
+    .sort((a, b) => b.score - a.score || a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name))
+    .slice(0, limit);
+
+  return {
+    query: query.q,
+    count: filtered.length,
+    limit,
+    results: filtered
+  };
+});
+
 app.get("/api/agents", async (request) => {
   const querySchema = z.object({
     attribute: z.string().optional(),
@@ -308,6 +432,43 @@ app.get("/api/agents/:agentId", async (request, reply) => {
   }
 
   return withImages("agents", localizeAgent(agent, locale), lang);
+});
+
+app.get("/api/agents/:agentId/materials", async (request, reply) => {
+  const params = z.object({ agentId: z.string() }).parse(request.params);
+  const query = z
+    .object({
+      from: z.coerce.number().int().min(1).max(59).optional(),
+      to: z.coerce.number().int().min(2).max(60).optional(),
+      lang: z.string().optional()
+    })
+    .parse(request.query);
+  const from = query.from ?? 1;
+  const to = query.to ?? 60;
+  const locale = readLocale(query.lang);
+  const lang = locale === "ja" ? "ja" : undefined;
+
+  if (from >= to) {
+    return reply.code(400).send({ error: "`from` must be lower than `to`" });
+  }
+
+  const agent = allAgents.find((item) => item.id === params.agentId);
+
+  if (!agent) {
+    return reply.code(404).send({ error: "Agent not found" });
+  }
+
+  const plan = getAgentMaterialPlan(agent, from, to);
+  return {
+    agent: withImages("agents", localizeAgent(agent, locale), lang),
+    ...plan,
+    relatedMaterials: Object.fromEntries(
+      Object.entries(plan.relatedMaterials).map(([key, values]) => [
+        key,
+        values.map((material) => withImages("materials", localizeMaterial(material, locale), lang))
+      ])
+    )
+  };
 });
 
 app.get("/api/w-engines", async (request) => {
@@ -503,6 +664,122 @@ const host = process.env.HOST ?? "127.0.0.1";
 
 await app.listen({ port, host });
 
+type SearchResult = {
+  kind: string;
+  id: string;
+  name: string;
+  score: number;
+  item: unknown;
+};
+
+const searchAliases: Record<string, string[]> = {
+  anby: ["アンビー"],
+  "alexandrina-sebastiane": ["リナ", "アレクサンドリナ"],
+  "asaba-harumasa": ["浅羽悠真", "悠真"],
+  "astra-yao": ["アストラ", "アストラ・ヤオ"],
+  "ben-bigger": ["ベン"],
+  billy: ["ビリー"],
+  "burnice-white": ["バーニス"],
+  "caesar-king": ["シーザー"],
+  "corin-wickes": ["カリン"],
+  ellen: ["エレン"],
+  "evelyn-chevalier": ["イヴリン"],
+  "grace-howard": ["グレース"],
+  "hoshimi-miyabi": ["星見雅", "雅"],
+  "jane-doe": ["ジェーン"],
+  koleda: ["クレタ"],
+  lighter: ["ライト"],
+  "luciana-de-montefio": ["ルーシー"],
+  "nekomiya-mana": ["猫又", "猫宮又奈"],
+  nicole: ["ニコ"],
+  "piper-wheel": ["パイパー"],
+  qingyi: ["青衣"],
+  "seth-lowell": ["セス"],
+  "soldier-0-anby": ["零号アンビー", "0号アンビー"],
+  "soldier-11": ["11号"],
+  soukaku: ["蒼角"],
+  trigger: ["トリガー"],
+  "tsukishiro-yanagi": ["月城柳", "柳"],
+  "vivian-banshee": ["ビビアン"],
+  "von-lycaon": ["ライカン"],
+  "zhu-yuan": ["朱鳶"]
+};
+
+function searchResult(kind: string, item: { id: string; name: string; localized?: { name?: string } }, query: string, aliases: string[] = []): SearchResult {
+  const score = searchScore([item.id, item.name, item.localized?.name, ...aliases].filter(Boolean).join(" "), query);
+  return {
+    kind,
+    id: item.id,
+    name: item.localized?.name ?? item.name,
+    score,
+    item
+  };
+}
+
+function searchScore(value: string, query: string) {
+  const normalizedValue = normalizeSearch(value);
+  const normalizedQuery = normalizeSearch(query);
+
+  if (normalizedValue === normalizedQuery) {
+    return 100;
+  }
+  if (normalizedValue.startsWith(normalizedQuery)) {
+    return 80;
+  }
+  if (normalizedValue.includes(normalizedQuery)) {
+    return 60;
+  }
+
+  const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
+  if (tokens.length > 1 && tokens.every((token) => normalizedValue.includes(token))) {
+    return 40;
+  }
+
+  return 0;
+}
+
+function normalizeSearch(value: string) {
+  return value.toLowerCase().normalize("NFKC").replace(/['’.,[\]\-_:]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function versionSummary(version: string) {
+  const versionAgents = allAgents.filter((item) => item.releaseVersion === version);
+  const versionWEngines = wEngines.filter((item) => item.releaseVersion === version);
+  const versionDriveDiscs = driveDiscs.filter((item) => item.releaseVersion === version);
+
+  return {
+    version,
+    isLatest: version === datasetMeta.maxVersion,
+    counts: {
+      agents: versionAgents.length,
+      wEngines: versionWEngines.length,
+      driveDiscs: versionDriveDiscs.length
+    },
+    agents: versionAgents.map((item) => item.id),
+    wEngines: versionWEngines.map((item) => item.id),
+    driveDiscs: versionDriveDiscs.map((item) => item.id)
+  };
+}
+
+function compareVersions(a: string, b: string) {
+  const left = a.split(".").map(Number);
+  const right = b.split(".").map(Number);
+  const length = Math.max(left.length, right.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const delta = (left[index] ?? 0) - (right[index] ?? 0);
+    if (delta !== 0) {
+      return delta;
+    }
+  }
+
+  return a.localeCompare(b);
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
 function parseAssetVariant(value: string): AssetVariant | undefined {
   const normalized = value.replace(/\.svg$/i, "");
   return normalized === "icon" || normalized === "card" ? normalized : undefined;
@@ -574,7 +851,7 @@ function iconManifestNanokaItem(item: NanokaCatalogItem) {
     name: item.name,
     rank: item.rank,
     class: item.class,
-    icon: item.images.generatedIcon,
+    icon: item.images.icon ?? item.images.generatedIcon,
     generatedIcon: item.images.generatedIcon,
     sourcePath: item.images.sourcePath,
     source: item.images.source
