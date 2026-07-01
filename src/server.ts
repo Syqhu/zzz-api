@@ -43,6 +43,18 @@ await app.register(swaggerUi, {
   routePrefix: "/docs"
 });
 
+app.setErrorHandler((error, request, reply) => {
+  if (error instanceof z.ZodError) {
+    return reply.code(400).send({
+      error: "Invalid request",
+      issues: error.issues
+    });
+  }
+
+  request.log.error(error);
+  return reply.code(500).send({ error: "Internal server error" });
+});
+
 app.get("/health", async () => ({
   ok: true,
   service: "zzz-api"
