@@ -1,4 +1,5 @@
-import Fastify from "fastify";
+import "dotenv/config";
+import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
@@ -20,6 +21,17 @@ import {
   type NanokaCatalogItem,
   nanokaDatasetSchema
 } from "./nanokaSource.js";
+import {
+  getHoyolabAgentBasicList,
+  getHoyolabAgentDetail,
+  getHoyolabAgentDetails,
+  getHoyolabConfigSummary,
+  getHoyolabDriveDiscs,
+  getHoyolabStatus,
+  testHoyolabConnection,
+  HoyolabApiError,
+  HoyolabConfigError
+} from "./hoyolab.js";
 
 const app = Fastify({
   logger: true
@@ -197,6 +209,55 @@ app.get("/api/image-proxy", async (request, reply) => {
   } catch (error) {
     request.log.error(error);
     return reply.code(502).send({ error: "Failed to proxy image" });
+  }
+});
+
+app.get("/api/hoyolab/config", async () => getHoyolabConfigSummary());
+
+app.get("/api/hoyolab/test", async (request) => {
+  const query = z.object({ details: z.coerce.boolean().optional() }).parse(request.query);
+  return testHoyolabConnection(query.details ?? false);
+});
+
+app.get("/api/hoyolab/status", async (request, reply) => {
+  try {
+    return await getHoyolabStatus();
+  } catch (error) {
+    return handleHoyolabError(error, request, reply);
+  }
+});
+
+app.get("/api/hoyolab/agents", async (request, reply) => {
+  const query = z.object({ details: z.coerce.boolean().optional() }).parse(request.query);
+
+  try {
+    return query.details ? await getHoyolabAgentDetails() : await getHoyolabAgentBasicList();
+  } catch (error) {
+    return handleHoyolabError(error, request, reply);
+  }
+});
+
+app.get("/api/hoyolab/agents/:avatarId", async (request, reply) => {
+  const params = z.object({ avatarId: z.coerce.number().int().positive() }).parse(request.params);
+
+  try {
+    const detail = await getHoyolabAgentDetail(params.avatarId);
+
+    if (!detail) {
+      return reply.code(404).send({ error: "HoYoLAB agent detail not found" });
+    }
+
+    return detail;
+  } catch (error) {
+    return handleHoyolabError(error, request, reply);
+  }
+});
+
+app.get("/api/hoyolab/drive-discs", async (request, reply) => {
+  try {
+    return await getHoyolabDriveDiscs();
+  } catch (error) {
+    return handleHoyolabError(error, request, reply);
   }
 });
 
@@ -809,6 +870,27 @@ function compareVersions(a: string, b: string) {
   }
 
   return a.localeCompare(b);
+}
+
+function handleHoyolabError(error: unknown, request: FastifyRequest, reply: FastifyReply) {
+  if (error instanceof HoyolabConfigError) {
+    return reply.code(501).send({
+      error: "HoYoLAB integration is not configured",
+      missing: error.missing,
+      risks: getHoyolabConfigSummary().risks
+    });
+  }
+
+  if (error instanceof HoyolabApiError) {
+    return reply.code(502).send({
+      error: "HoYoLAB upstream request failed",
+      status: error.status,
+      payload: error.payload
+    });
+  }
+
+  request.log.error(error);
+  return reply.code(502).send({ error: "HoYoLAB request failed" });
 }
 
 async function resizeImage(

@@ -14,6 +14,7 @@ This project provides static game catalog data, Japanese display labels, image U
 - Agent level-cost and material-planning helpers
 - Unified search across local catalog data and upstream items
 - Version summaries and upstream update checks
+- Optional private HoYoLAB integration for your own account data
 - In-memory build save/fetch API
 - Swagger UI at `/docs`
 
@@ -92,6 +93,15 @@ GET  /api/search?q=tape&includeItems=true&limit=10
 
 GET  /api/image-proxy?url=https%3A%2F%2Fstatic.nanoka.cc%2Fassets%2Fzzz%2FGachaTicket1.webp
 GET  /api/image-proxy?url=https%3A%2F%2Fstatic.nanoka.cc%2Fassets%2Fzzz%2FGachaTicket1.webp&w=128&format=webp
+
+GET  /api/hoyolab/config
+GET  /api/hoyolab/test
+GET  /api/hoyolab/test?details=true
+GET  /api/hoyolab/status
+GET  /api/hoyolab/agents
+GET  /api/hoyolab/agents?details=true
+GET  /api/hoyolab/agents/:avatarId
+GET  /api/hoyolab/drive-discs
 
 GET  /api/agents
 GET  /api/agents?attribute=Fire
@@ -198,7 +208,60 @@ Latest upstream items from `zzz.nanoka.cc` include `images.icon` and `images.car
 
 ## Notes
 
-This project does not use HoYoLAB credentials or private account data.
+By default, this project does not use HoYoLAB credentials or private account data. HoYoLAB access is enabled only when you add private cookie values to your local `.env`.
+
+## Optional HoYoLAB Integration
+
+HoYoLAB integration is optional and intended for private/self-hosted use only. It uses browser cookie values from your own HoYoLAB session. The API never asks for your HoYoVerse password.
+
+Risk notes:
+
+- HoYoLAB endpoints are not an official public developer API and may change without notice.
+- Cookie values such as `ltoken`, `ltuid`, and `e_nap_token` can grant access to account-related HoYoLAB data. Keep them out of GitHub, logs, screenshots, and public APIs.
+- Do not collect other users' cookies. This feature is meant for your own bot/server.
+- HoYoLAB may rate-limit requests or invalidate cookies.
+- `status` is the easiest endpoint to enable. Owned agent details and equipped drive discs may require extra web-app cookies such as `e_nap_token` and `device_fp`.
+
+Setup:
+
+```bash
+copy .env.example .env
+```
+
+Then fill only your local `.env`:
+
+```env
+ZZZ_UID=your_zzz_uid
+ZZZ_REGION=prod_gf_jp
+HOYOLAB_COOKIE_VERSION=v2
+HOYOLAB_LTUID=your_ltuid_v2
+HOYOLAB_LTOKEN=your_ltoken_v2
+
+# Needed for /api/hoyolab/agents?details=true and /api/hoyolab/drive-discs
+HOYOLAB_E_NAP_TOKEN=your_e_nap_token
+HOYOLAB_DEVICE_FP=your_device_fp
+HOYOLAB_CACHE_TTL_SECONDS=300
+```
+
+Check configuration without exposing secrets:
+
+```txt
+GET /api/hoyolab/config
+GET /api/hoyolab/test
+```
+
+Use:
+
+```txt
+GET /api/hoyolab/status
+GET /api/hoyolab/agents
+GET /api/hoyolab/agents?details=true
+GET /api/hoyolab/drive-discs
+```
+
+HoYoLAB responses include the upstream `data` plus a best-effort `normalized` field where possible. The normalized shape is intended for bots and apps, while `data` remains useful when HoYoLAB changes its response format.
+
+HoYoLAB requests are cached in memory for `HOYOLAB_CACHE_TTL_SECONDS` seconds. Set it to `0` to disable caching while debugging cookie issues.
 
 Agent data is seeded through Version 3.0 as of 2026-06-29. `/api/agents` returns released agents by default. Use `includeUpcoming=true` or `/api/agents/upcoming` to include announced Version 3.0 upcoming agents.
 
